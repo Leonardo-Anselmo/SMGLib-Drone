@@ -1,0 +1,29 @@
+{
+    "test_name": "track_trajectory_llm_explain",
+    "env_type": "landing_pad",
+    "verbose": true,
+    "num_moving_drones": 3,
+    "min_radius": 0.5,
+    "wall_collision_multiplier": 2.0,
+    "epsilon": 0.1,
+    "step_size": 0.1,
+    "k_value": 10,
+    "max_steps": 600,
+    "use_priority": true,
+    "use_trajectory_planner": true,
+    "use_llm_advisor": true,
+    "llm_mode": "explain",
+    "llm_cache_steps": 25,
+    "llm_model": "claude-haiku-4-5-20251001",
+    "n_trips": 1,
+    "unload_steps": 5,
+    "max_speed": 1.0,
+    "min_separation": 1.0,
+    "safe_distance": 1.2,
+    "nominal_speed": 0.1,
+    "drones": [
+        {"start": [ 1.0,  1.0], "goal": [0.0, 0.0], "cargo_type": "medication", "time_to_expiry": 50.0,  "patient_acuity": "urgent"},
+        {"start": [-1.5,  1.5], "goal": [0.0, 0.0], "cargo_type": "organ",      "time_to_expiry": 200.0, "patient_acuity": "critical"},
+        {"start": [-3.0, -2.0], "goal": [0.0, 0.0], "cargo_type": "equipment",  "time_to_expiry": 300.0, "patient_acuity": "routine"}
+    ]
+}

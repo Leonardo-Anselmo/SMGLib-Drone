@@ -1,0 +1,21 @@
+{
+    "factor_weights": {
+        "cargo":    0.35,
+        "expiry":   0.30,
+        "distance": 0.15,
+        "acuity":   0.20
+    },
+    "cargo_weights": {
+        "organ":         1.0,
+        "blood_product": 0.7,
+        "medication":    0.4,
+        "equipment":     0.1
+    },
+    "acuity_scores": {
+        "critical": 1.0,
+        "urgent":   0.6,
+        "routine":  0.2
+    },
+    "max_distance": 10.0,
+    "max_expiry": 300.0
+}

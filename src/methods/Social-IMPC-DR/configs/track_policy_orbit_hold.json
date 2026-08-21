@@ -1,0 +1,26 @@
+{
+    "test_name": "track_policy_orbit_hold",
+    "env_type": "landing_pad",
+    "verbose": true,
+    "num_moving_drones": 3,
+    "min_radius": 0.5,
+    "wall_collision_multiplier": 2.0,
+    "epsilon": 0.1,
+    "step_size": 0.1,
+    "k_value": 10,
+    "max_steps": 300,
+    "policy": {
+        "selector":       "priority",
+        "yielder":        "orbit",
+        "lifecycle":      "one_way",
+        "use_hysteresis": true,
+        "orbit_radius":   0.7,
+        "orbit_speed":    0.15,
+        "safe_distance":  1.2
+    },
+    "drones": [
+        {"start": [0.0,  1.5],  "goal": [0.0, 0.0], "cargo_type": "equipment",  "time_to_expiry": 200.0, "patient_acuity": "routine"},
+        {"start": [0.0,  3.8],  "goal": [0.0, 0.0], "cargo_type": "organ",      "time_to_expiry": 60.0,  "patient_acuity": "critical"},
+        {"start": [-0.6, 0.8],  "goal": [0.0, 0.0], "cargo_type": "medication", "time_to_expiry": 150.0, "patient_acuity": "urgent"}
+    ]
+}

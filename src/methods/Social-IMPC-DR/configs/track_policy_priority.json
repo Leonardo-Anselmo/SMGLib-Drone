@@ -1,0 +1,23 @@
+{
+    "test_name": "track_policy_priority",
+    "env_type": "landing_pad",
+    "verbose": true,
+    "num_moving_drones": 3,
+    "min_radius": 0.5,
+    "wall_collision_multiplier": 2.0,
+    "epsilon": 0.1,
+    "step_size": 0.1,
+    "k_value": 10,
+    "max_steps": 200,
+    "policy": {
+        "selector":       "priority",
+        "yielder":        "freeze",
+        "lifecycle":      "one_way",
+        "use_hysteresis": true
+    },
+    "drones": [
+        {"start": [0.0, 3.0],  "goal": [0.0, 0.0], "cargo_type": "organ",      "time_to_expiry": 60.0,  "patient_acuity": "critical"},
+        {"start": [0.0, -3.0], "goal": [0.0, 0.0], "cargo_type": "equipment",  "time_to_expiry": 200.0, "patient_acuity": "routine"},
+        {"start": [-2.5, 0.0], "goal": [0.0, 0.0], "cargo_type": "medication", "time_to_expiry": 150.0, "patient_acuity": "urgent"}
+    ]
+}

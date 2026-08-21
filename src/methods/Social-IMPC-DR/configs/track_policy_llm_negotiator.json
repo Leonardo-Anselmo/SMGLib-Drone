@@ -1,0 +1,32 @@
+{
+    "test_name": "track_policy_llm_negotiator",
+    "env_type": "landing_pad",
+    "verbose": true,
+    "num_moving_drones": 3,
+    "min_radius": 0.5,
+    "wall_collision_multiplier": 2.0,
+    "epsilon": 0.1,
+    "step_size": 0.1,
+    "k_value": 10,
+    "max_steps": 300,
+    "policy": {
+        "selector": "priority",
+        "yielder": "orbit",
+        "lifecycle": "one_way",
+        "negotiators": ["llm_negotiator"],
+        "use_hysteresis": true,
+        "orbit_radius": 0.7,
+        "orbit_speed": 0.15,
+        "safe_distance": 1.2,
+        "nominal_speed": 0.1,
+        "llm_model": "claude-haiku-4-5-20251001",
+        "llm_cache_steps": 10,
+        "use_llm_hook": true,
+        "use_llm_score": false
+    },
+    "drones": [
+        {"start": [0.0,  3.0], "goal": [0.0, 0.0], "cargo_type": "blood_product", "time_to_expiry": 50.0, "patient_acuity": "critical"},
+        {"start": [-2.5, 0.0], "goal": [0.0, 0.0], "cargo_type": "organ", "time_to_expiry": 60.0, "patient_acuity": "urgent"},
+        {"start": [2.5, 0.0],  "goal": [0.0, 0.0], "cargo_type": "equipment", "time_to_expiry": 300.0, "patient_acuity": "routine"}
+    ]
+}

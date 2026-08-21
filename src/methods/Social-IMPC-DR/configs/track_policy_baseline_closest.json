@@ -1,0 +1,21 @@
+{
+    "test_name": "track_policy_baseline_closest",
+    "env_type": "landing_pad",
+    "verbose": true,
+    "num_moving_drones": 2,
+    "min_radius": 0.5,
+    "wall_collision_multiplier": 2.0,
+    "epsilon": 0.1,
+    "step_size": 0.1,
+    "k_value": 10,
+    "max_steps": 100,
+    "policy": {
+        "selector":  "closest_first",
+        "yielder":   "freeze",
+        "lifecycle": "one_way"
+    },
+    "drones": [
+        {"start": [0.0, 3.0],  "goal": [0.0, 0.0]},
+        {"start": [0.0, -3.0], "goal": [0.0, 0.0]}
+    ]
+}

@@ -1,0 +1,29 @@
+{
+    "test_name": "track_policy_negotiation_eta_switch",
+    "env_type": "landing_pad",
+    "verbose": true,
+    "num_moving_drones": 3,
+    "min_radius": 0.5,
+    "wall_collision_multiplier": 2.0,
+    "epsilon": 0.1,
+    "step_size": 0.1,
+    "k_value": 10,
+    "max_steps": 300,
+    "policy": {
+        "selector":       "priority",
+        "yielder":        "orbit",
+        "lifecycle":      "one_way",
+        "negotiators":    ["expiry_guard", "eta_switch"],
+        "use_hysteresis": true,
+        "orbit_radius":   0.7,
+        "orbit_speed":    0.15,
+        "safe_distance":  1.2,
+        "nominal_speed":  0.1,
+        "eta_threshold":  0.15
+    },
+    "drones": [
+        {"start": [ 0.0,  1.5], "goal": [0.0, 0.0], "cargo_type": "medication",    "time_to_expiry": 50.0,  "patient_acuity": "urgent"},
+        {"start": [ 0.4,  2.8], "goal": [0.0, 0.0], "cargo_type": "organ",         "time_to_expiry": 200.0, "patient_acuity": "critical"},
+        {"start": [-0.5,  2.0], "goal": [0.0, 0.0], "cargo_type": "blood_product", "time_to_expiry": 250.0, "patient_acuity": "urgent"}
+    ]
+}
