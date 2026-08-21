@@ -1,7 +1,7 @@
 """Finite-horizon lookahead trajectory planner.
 
-This module implements Leonardo's lookahead variant of the trajectory
-planner track. It reuses the baseline trajectory planner's lifecycle logic
+This module implements the finite-horizon lookahead variant of the trajectory
+planner. It reuses the baseline trajectory planner's lifecycle logic
 (INBOUND -> UNLOADING -> OUTBOUND -> DONE), but overrides the replanning
 step so landing order is chosen by evaluating future candidate schedules
 instead of simply sorting by current priority score.
@@ -44,9 +44,9 @@ class LookaheadTrajectoryPlannerController(TrajectoryPlannerController):
         # Try every possible ordering of the inbound drones
         # Fine for small fleet numbers but not easily scalable
         for order in itertools.permutations(info):
-            T_prev = 0.0                    # Arrival time assigned to previous drone
-            v_prev = self._max_speed        # Previous drone's assigned speed cap
-            total_cost = 0.0                # Objective value for this candidate order
+            T_prev = 0.0  # Arrival time assigned to previous drone
+            v_prev = self._max_speed  # Previous drone's assigned speed cap
+            total_cost = 0.0  # Objective value for this candidate order
 
             for rank, d in enumerate(order):
                 dist = d["dist"]
@@ -128,12 +128,14 @@ class LookaheadTrajectoryPlannerController(TrajectoryPlannerController):
                 patient_acuity=getattr(a, "patient_acuity", "routine"),
             )
 
-            info.append({
-                "idx": j,
-                "dist": dist,
-                "score": score,
-                "time_to_expiry": float(getattr(a, "time_to_expiry", 300.0)),
-            })
+            info.append(
+                {
+                    "idx": j,
+                    "dist": dist,
+                    "score": score,
+                    "time_to_expiry": float(getattr(a, "time_to_expiry", 300.0)),
+                }
+            )
 
         # Optional LLM advisor hook
         # Makes the lookahead planner compatible with the same interface as baseline
@@ -203,7 +205,7 @@ class LookaheadTrajectoryPlannerController(TrajectoryPlannerController):
                 agent_list[j].Vmax = self._max_speed
 
         # Cache the selected schedule so the controller does not replan every
-        # step unless the inbound set changes or the state gets messy 
+        # step unless the inbound set changes or the state gets messy
         self._last_schedule = schedule
         self._last_inbound = frozenset(inbound)
         self._planner_dirty = False
@@ -211,13 +213,10 @@ class LookaheadTrajectoryPlannerController(TrajectoryPlannerController):
         if step % 25 == 1:
             ranked = sorted(schedule.items(), key=lambda kv: kv[1]["rank"])
             summary = ", ".join(
-                f"D{j}: v={s['Vmax']:.3f} T={s['T_arrive']:.1f}"
-                for j, s in ranked
+                f"D{j}: v={s['Vmax']:.3f} T={s['T_arrive']:.1f}" for j, s in ranked
             )
             print(f"  [Lookahead Planner] step {step} schedule -> {summary}")
 
         # Preserve compatibility with the LLM advisor's explanation pathway
         if self._llm_advisor is not None:
-            self._llm_advisor.maybe_explain_schedule(
-                agent_list, info, schedule, step
-            )
+            self._llm_advisor.maybe_explain_schedule(agent_list, info, schedule, step)

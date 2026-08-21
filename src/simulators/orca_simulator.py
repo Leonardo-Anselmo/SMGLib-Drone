@@ -10,14 +10,15 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 import run_simulation
 
+
 def run_orca_simulation(num_robots: int, env_type: str):
     """
     Run Social-ORCA simulation.
-    
+
     Args:
         num_robots: Number of robots to simulate
         env_type: Environment type ('hallway', 'doorway', 'intersection')
-    
+
     Returns:
         dict: Simulation results including makespan, flow_rate, completion_data
     """
@@ -26,4 +27,4 @@ def run_orca_simulation(num_robots: int, env_type: str):
         return run_simulation.run_social_orca(num_robots, env_type)
     except Exception as e:
         print(f"ORCA simulation error: {e}")
-        return None 
+        return None

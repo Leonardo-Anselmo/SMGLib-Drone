@@ -18,11 +18,9 @@ This file owns everything Track 2 needs:
 - a pad-busy safety net (freeze near-pad inbound drones while another
   drone is UNLOADING).
 
-The yield/orbit/negotiation family (`PriorityManager`, `OrbitController`,
-`NegotiationController`, plus their LLM extension) lived on the
-historical Phase 1-4 chain and is represented by the final branch's
-`yield_control/` module. The only base class kept here is
-`LandingPadController`, which provides the MPC-side plumbing
+The yield/orbit/negotiation family is implemented independently in the
+`yield_control/` package. The only base class used here is
+`LandingPadController`, which provides MPC-side plumbing
 (`cleanup_landed` defaults, `freeze_yielding`, `reset_mpc`,
 `update_idle_positions`, `get_released_drones`, `step_update`).
 
@@ -42,15 +40,15 @@ Usage:
 
 import numpy as np
 
-import SET
+import settings as SET
 from landing_pad import LandingPadController, PAD_CENTER
 from priority import priority_score
 
 
-INBOUND   = 'INBOUND'
-UNLOADING = 'UNLOADING'
-OUTBOUND  = 'OUTBOUND'
-DONE      = 'DONE'
+INBOUND = "INBOUND"
+UNLOADING = "UNLOADING"
+OUTBOUND = "OUTBOUND"
+DONE = "DONE"
 
 
 class TrajectoryPlannerController(LandingPadController):
@@ -73,33 +71,34 @@ class TrajectoryPlannerController(LandingPadController):
     ):
         super().__init__()
         # FSM bookkeeping
-        self.cargo_configs     = cargo_configs or []
-        self._return_points    = [np.array(rp, dtype=float)
-                                  for rp in (return_points or [])]
-        self._n_trips          = max(1, int(n_trips))
-        self._unload_steps     = max(0, int(unload_steps))
-        self._state            = {}    # j -> state string
-        self._unload_remaining = {}    # j -> int
-        self._trips_done       = {}    # j -> int
-        self._target_ref       = None  # bound from test.py before main loop
-        self._initialized      = False
+        self.cargo_configs = cargo_configs or []
+        self._return_points = [
+            np.array(rp, dtype=float) for rp in (return_points or [])
+        ]
+        self._n_trips = max(1, int(n_trips))
+        self._unload_steps = max(0, int(unload_steps))
+        self._state = {}  # j -> state string
+        self._unload_remaining = {}  # j -> int
+        self._trips_done = {}  # j -> int
+        self._target_ref = None  # bound from simulation.py before main loop
+        self._initialized = False
 
         # Planner knobs
-        self._max_speed        = float(max_speed)
-        self._min_separation   = float(min_separation)
-        self._safe_distance    = float(safe_distance)
-        self._nominal_speed    = float(nominal_speed)
-        self._last_inbound     = frozenset()
-        self._last_scores      = {}
-        self._last_schedule    = {}    # j -> {"T_arrive", "Vmax", "rank"}
-        self._planner_dirty    = True
-        self._llm_advisor      = llm_advisor
+        self._max_speed = float(max_speed)
+        self._min_separation = float(min_separation)
+        self._safe_distance = float(safe_distance)
+        self._nominal_speed = float(nominal_speed)
+        self._last_inbound = frozenset()
+        self._last_scores = {}
+        self._last_schedule = {}  # j -> {"T_arrive", "Vmax", "rank"}
+        self._planner_dirty = True
+        self._llm_advisor = llm_advisor
 
     # ------------------------------------------------------------------
     # External wiring
     # ------------------------------------------------------------------
     def bind(self, target_array):
-        """Give the controller a handle to test.py's per-drone target list,
+        """Give the controller a handle to simulation.py's per-drone target list,
         so it can swap goals between PAD_CENTER and the return point."""
         self._target_ref = target_array
 
@@ -107,9 +106,9 @@ class TrajectoryPlannerController(LandingPadController):
         if self._initialized:
             return
         for j in range(num_moving_drones):
-            self._state[j]            = INBOUND
+            self._state[j] = INBOUND
             self._unload_remaining[j] = 0
-            self._trips_done[j]       = 0
+            self._trips_done[j] = 0
         # Stamp each drone's home pad onto its uav for visualisation only
         # when this is a true shuttle scenario (n_trips >= 2). One-way
         # scenarios (n_trips == 1) functionally still use self._return_points
@@ -168,14 +167,18 @@ class TrajectoryPlannerController(LandingPadController):
             j = d["idx"]
             dist = d["dist"]
             T_phys = dist / max(self._max_speed, 1e-6)
-            T_pad  = T_prev + self._unload_steps
-            T_sep  = T_prev + self._min_separation / max(v_prev, 1e-6)
-            T_arrive = max(T_phys,
-                           T_pad if rank > 0 else 0.0,
-                           T_sep if rank > 0 else 0.0)
+            T_pad = T_prev + self._unload_steps
+            T_sep = T_prev + self._min_separation / max(v_prev, 1e-6)
+            T_arrive = max(
+                T_phys, T_pad if rank > 0 else 0.0, T_sep if rank > 0 else 0.0
+            )
             v_assign = min(dist / max(T_arrive, 1e-6), self._max_speed)
-            schedule[j] = {"T_arrive": T_arrive, "Vmax": v_assign,
-                           "rank": rank, "dist": dist}
+            schedule[j] = {
+                "T_arrive": T_arrive,
+                "Vmax": v_assign,
+                "rank": rank,
+                "dist": dist,
+            }
             T_prev = T_arrive
             v_prev = v_assign
 
@@ -189,29 +192,25 @@ class TrajectoryPlannerController(LandingPadController):
                 agent_list[j].Vmax = self._max_speed
 
         self._last_schedule = schedule
-        self._last_inbound  = frozenset(inbound)
+        self._last_inbound = frozenset(inbound)
         self._planner_dirty = False
 
         if step % 25 == 1:
             ranked = sorted(schedule.items(), key=lambda kv: kv[1]["rank"])
             summary = ", ".join(
-                f"D{j}: v={s['Vmax']:.3f} T={s['T_arrive']:.1f}"
-                for j, s in ranked
+                f"D{j}: v={s['Vmax']:.3f} T={s['T_arrive']:.1f}" for j, s in ranked
             )
             print(f"  [Planner] step {step} schedule -> {summary}")
 
         if self._llm_advisor is not None:
-            self._llm_advisor.maybe_explain_schedule(
-                agent_list, info, schedule, step
-            )
+            self._llm_advisor.maybe_explain_schedule(agent_list, info, schedule, step)
 
     # ------------------------------------------------------------------
     # Override: planner mode -- everyone flies; safety-net freezes near-pad
     # ------------------------------------------------------------------
     def select_active_drone(self, agent_list, active_drones, step, verbose):
         self._ensure_init(len(agent_list), agent_list)
-        inbound = [j for j in active_drones
-                   if self._state.get(j, INBOUND) == INBOUND]
+        inbound = [j for j in active_drones if self._state.get(j, INBOUND) == INBOUND]
 
         if frozenset(inbound) != self._last_inbound or self._planner_dirty:
             self._replan(agent_list, inbound, step)
@@ -226,10 +225,10 @@ class TrajectoryPlannerController(LandingPadController):
                     yielding.add(j)
 
         return {
-            "allowed":  None,  # planner does not use single-winner routing
+            "allowed": None,  # planner does not use single-winner routing
             "yielding": yielding,
-            "method":   "planner",
-            "scores":   dict(self._last_scores),
+            "method": "planner",
+            "scores": dict(self._last_scores),
         }
 
     # ------------------------------------------------------------------
@@ -246,38 +245,49 @@ class TrajectoryPlannerController(LandingPadController):
 
             if state == INBOUND:
                 # Just touched down at the pad - start the unload timer.
-                self._state[j]            = UNLOADING
+                self._state[j] = UNLOADING
                 self._unload_remaining[j] = self._unload_steps
                 self._park(agent_list[j], agent_list[j].p, K)
-                print(f"  [Lifecycle] Drone {j}: INBOUND -> UNLOADING "
-                      f"(trip {self._trips_done[j] + 1}/{self._n_trips})")
+                print(
+                    f"  [Lifecycle] Drone {j}: INBOUND -> UNLOADING "
+                    f"(trip {self._trips_done[j] + 1}/{self._n_trips})"
+                )
 
             elif state == OUTBOUND:
                 # Just reached the return point - count the trip.
                 self._trips_done[j] += 1
-                home = (self._return_points[j]
-                        if j < len(self._return_points) else PAD_CENTER)
+                home = (
+                    self._return_points[j]
+                    if j < len(self._return_points)
+                    else PAD_CENTER
+                )
                 if self._trips_done[j] >= self._n_trips:
                     self._state[j] = DONE
                     # Park at home pad (NOT teleport off-screen) so the
                     # drone is rendered resting where it belongs and acts
                     # as a static obstacle for any drones still flying.
                     self._park(agent_list[j], home, K)
-                    print(f"  [Lifecycle] Drone {j}: OUTBOUND -> DONE "
-                          f"(parked at home {home.tolist()}, "
-                          f"completed {self._trips_done[j]} trips)")
+                    print(
+                        f"  [Lifecycle] Drone {j}: OUTBOUND -> DONE "
+                        f"(parked at home {home.tolist()}, "
+                        f"completed {self._trips_done[j]} trips)"
+                    )
                 else:
                     # Begin the next inbound leg.
                     self._state[j] = INBOUND
-                    self._switch_target(j, agent_list[j], target_reached,
-                                        PAD_CENTER)
-                    print(f"  [Lifecycle] Drone {j}: OUTBOUND -> INBOUND "
-                          f"(starting trip {self._trips_done[j] + 1})")
+                    self._switch_target(j, agent_list[j], target_reached, PAD_CENTER)
+                    print(
+                        f"  [Lifecycle] Drone {j}: OUTBOUND -> INBOUND "
+                        f"(starting trip {self._trips_done[j] + 1})"
+                    )
 
             elif state == DONE:
                 # Keep parked at home pad each step.
-                home = (self._return_points[j]
-                        if j < len(self._return_points) else PAD_CENTER)
+                home = (
+                    self._return_points[j]
+                    if j < len(self._return_points)
+                    else PAD_CENTER
+                )
                 self._park(agent_list[j], home, K)
 
             # UNLOADING: handled by step_update countdown.
@@ -296,8 +306,7 @@ class TrajectoryPlannerController(LandingPadController):
     def step_update(self, agent_list, target_reached, num_moving_drones):
         # TTE countdown for cargo-aware priority scoring (the planner reads
         # `time_to_expiry` inside `_replan` via `priority_score`). Was
-        # previously inherited from `PriorityManager.step_update` on the
-        # Phase 1-6 chain; inlined here so this controller stays
+        # Keep the countdown here so the trajectory-planner lifecycle remains
         # self-contained.
         for j in range(num_moving_drones):
             if not target_reached[j]:
@@ -315,11 +324,16 @@ class TrajectoryPlannerController(LandingPadController):
             self._unload_remaining[j] -= 1
             if self._unload_remaining[j] <= 0:
                 self._state[j] = OUTBOUND
-                rp = (self._return_points[j]
-                      if j < len(self._return_points) else PAD_CENTER)
+                rp = (
+                    self._return_points[j]
+                    if j < len(self._return_points)
+                    else PAD_CENTER
+                )
                 self._switch_target(j, agent_list[j], target_reached, rp)
-                print(f"  [Lifecycle] Drone {j}: UNLOADING -> OUTBOUND "
-                      f"(heading to {rp.tolist()})")
+                print(
+                    f"  [Lifecycle] Drone {j}: UNLOADING -> OUTBOUND "
+                    f"(heading to {rp.tolist()})"
+                )
 
         if any(self._state.get(j) != before.get(j) for j in range(num_moving_drones)):
             self._planner_dirty = True
@@ -333,8 +347,7 @@ class TrajectoryPlannerController(LandingPadController):
     def all_finished(self, target_reached, num_moving_drones):
         if not self._initialized:
             return False
-        return all(self._state.get(j) == DONE
-                   for j in range(num_moving_drones))
+        return all(self._state.get(j) == DONE for j in range(num_moving_drones))
 
     # ------------------------------------------------------------------
     # FSM helpers
@@ -342,8 +355,8 @@ class TrajectoryPlannerController(LandingPadController):
     @staticmethod
     def _park(agent, position, K):
         """Freeze the agent in place at `position` (used during UNLOADING / DONE)."""
-        agent.p     = np.array(position, dtype=float)
-        agent.v     = np.zeros(2)
+        agent.p = np.array(position, dtype=float)
+        agent.v = np.zeros(2)
         agent.state = np.append(agent.p, agent.v)
         agent.pre_traj = np.tile(agent.p, (K + 1, 1))
 
@@ -362,13 +375,13 @@ class TrajectoryPlannerController(LandingPadController):
         target_reached[j] = False
         # Warm-start the MPC trajectory from the current position so the
         # first solve doesn't dart backwards toward the old goal.
-        agent.pre_traj  = np.tile(agent.p, (agent.K + 1, 1))
+        agent.pre_traj = np.tile(agent.p, (agent.K + 1, 1))
         agent.cost_index = agent.K
         # Clear the MPC's "I've converged on the old target" termination
         # flags. Without this reset the optimiser thinks it is already at
         # goal and refuses to plan a fresh trajectory toward `new_target`.
-        agent.term_overlap       = False
+        agent.term_overlap = False
         agent.term_overlap_again = False
-        agent.term_index         = 0
-        agent.eta                = 1.0
-        agent.term_last_pos      = agent.p.copy()
+        agent.term_index = 0
+        agent.eta = 1.0
+        agent.term_last_pos = agent.p.copy()

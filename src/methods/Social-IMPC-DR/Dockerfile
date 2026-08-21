@@ -32,4 +32,4 @@ RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 ENV QT_QPA_PLATFORM=xcb
 
 # Run the application
-CMD ["python", "app.py"]
+CMD ["python", "gui.py"]

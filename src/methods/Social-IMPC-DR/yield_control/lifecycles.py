@@ -17,14 +17,14 @@ from typing import Dict, List, Optional, Set
 
 import numpy as np
 
-import SET
+import settings as SET
 
 from .context import Context, PAD_CENTER
 
-INBOUND   = "INBOUND"
+INBOUND = "INBOUND"
 UNLOADING = "UNLOADING"
-OUTBOUND  = "OUTBOUND"
-DONE      = "DONE"
+OUTBOUND = "OUTBOUND"
+DONE = "DONE"
 
 
 class Lifecycle:
@@ -36,9 +36,7 @@ class Lifecycle:
     def filter_inbound(self, active: List[int], ctx: Context) -> List[int]:
         return list(active)
 
-    def force_yield(
-        self, inbound: List[int], ctx: Context
-    ) -> Optional[Dict]:
+    def force_yield(self, inbound: List[int], ctx: Context) -> Optional[Dict]:
         return None
 
     def step_update(self, ctx: Context) -> None:
@@ -120,9 +118,7 @@ class RoundTrip(Lifecycle):
         self._ensure_init(ctx)
         return [j for j in active if self._state.get(j, INBOUND) == INBOUND]
 
-    def force_yield(
-        self, inbound: List[int], ctx: Context
-    ) -> Optional[Dict]:
+    def force_yield(self, inbound: List[int], ctx: Context) -> Optional[Dict]:
         if not self._initialized:
             return None
         # If the pad is occupied by an UNLOADING drone, no INBOUND drone
@@ -131,10 +127,10 @@ class RoundTrip(Lifecycle):
         pad_busy = any(s == UNLOADING for s in self._state.values())
         if pad_busy:
             return {
-                "allowed":  None,
+                "allowed": None,
                 "yielding": set(inbound),
-                "method":   "pad_busy",
-                "scores":   {},
+                "method": "pad_busy",
+                "scores": {},
             }
         return None
 
@@ -175,9 +171,7 @@ class RoundTrip(Lifecycle):
                     )
 
             elif state == DONE:
-                self._park(
-                    ctx.agent_list[j], ctx.agent_list[j].home_pad, ctx.K
-                )
+                self._park(ctx.agent_list[j], ctx.agent_list[j].home_pad, ctx.K)
             # UNLOADING is advanced by step_update.
 
     def step_update(self, ctx: Context) -> None:
@@ -190,7 +184,8 @@ class RoundTrip(Lifecycle):
                 self._state[j] = OUTBOUND
                 rp = (
                     self._return_points[j]
-                    if j < len(self._return_points) else PAD_CENTER
+                    if j < len(self._return_points)
+                    else PAD_CENTER
                 )
                 self._switch_target(j, ctx, rp)
                 print(
@@ -201,10 +196,7 @@ class RoundTrip(Lifecycle):
     def all_finished(self, ctx: Context) -> Optional[bool]:
         if not self._initialized:
             return False
-        return all(
-            self._state.get(j) == DONE
-            for j in range(ctx.num_moving_drones)
-        )
+        return all(self._state.get(j) == DONE for j in range(ctx.num_moving_drones))
 
     @staticmethod
     def _park(agent, position, K) -> None:

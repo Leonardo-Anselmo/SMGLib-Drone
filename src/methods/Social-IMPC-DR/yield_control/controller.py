@@ -9,7 +9,7 @@ The controller does not implement *any* policy itself. It composes:
 - an optional hysteresis flag (lock-in winner until they finish)
 
 Each role can be swapped independently via the recipe in the scenario JSON.
-The orchestrator preserves the public surface ``test.py`` already calls:
+The orchestrator exposes the interface used by ``simulation.py``:
 ``cleanup_landed``, ``select_active_drone``, ``freeze_yielding``,
 ``get_released_drones``, ``reset_mpc``, ``update_idle_positions``,
 ``step_update``, ``all_finished``.
@@ -117,10 +117,10 @@ class PolicyYieldController:
 
         if not candidates:
             decision = {
-                "allowed":  None,
+                "allowed": None,
                 "yielding": set(),
-                "method":   "no_candidates",
-                "scores":   {},
+                "method": "no_candidates",
+                "scores": {},
             }
             self._active_idx = None
             return decision
@@ -133,10 +133,10 @@ class PolicyYieldController:
         if len(candidates) == 1:
             idx = candidates[0]
             decision = {
-                "allowed":  idx,
+                "allowed": idx,
                 "yielding": set(),
-                "method":   self.selector.name,
-                "scores":   {},
+                "method": self.selector.name,
+                "scores": {},
             }
             self._commit(decision)
             self._active_idx = idx
@@ -162,21 +162,22 @@ class PolicyYieldController:
         ctx: Context,
     ) -> Dict:
         if not self.use_hysteresis:
-            return override if override is not None else self.selector.select(candidates, ctx)
+            return (
+                override
+                if override is not None
+                else self.selector.select(candidates, ctx)
+            )
 
         # Expiry-guard always trumps the held winner.
         if override is not None and override.get("method") == "expiry_guard":
             return override
 
-        if (
-            self._held_winner is not None
-            and self._held_winner in candidates
-        ):
+        if self._held_winner is not None and self._held_winner in candidates:
             return {
-                "allowed":  self._held_winner,
+                "allowed": self._held_winner,
                 "yielding": {j for j in candidates if j != self._held_winner},
-                "method":   self._held_method or self.selector.name,
-                "scores":   self.selector.score(candidates, ctx),
+                "method": self._held_method or self.selector.name,
+                "scores": self.selector.score(candidates, ctx),
             }
 
         if override is not None:
@@ -205,9 +206,7 @@ class PolicyYieldController:
     @staticmethod
     def reset_mpc(agent_list, released_indices, verbose) -> None:
         for j in released_indices:
-            agent_list[j].pre_traj = np.tile(
-                agent_list[j].p, (agent_list[j].K + 1, 1)
-            )
+            agent_list[j].pre_traj = np.tile(agent_list[j].p, (agent_list[j].K + 1, 1))
             agent_list[j].v = np.zeros_like(agent_list[j].v)
             agent_list[j].state = np.append(agent_list[j].p, agent_list[j].v)
             agent_list[j].cost_index = agent_list[j].K
@@ -233,6 +232,6 @@ class PolicyYieldController:
 class _TteAware:
     """Marker base; future TTE-aware selectors can subclass this so the
     controller knows to advance ``time_to_expiry`` each step without us
-    hardcoding selector names. Currently unused but reserved for plugins."""
+    hardcoding selector names. Available to future plugins."""
 
     pass

@@ -1,13 +1,9 @@
-"""Factories for trajectory-planner modes.
+"""Factories for trajectory-planner command modes.
 
-Mode names are part of the final submission interface:
-
-- ``baseline``: current speed-scaled planner.
-- ``llm``: reserved for Shariq's trajectory-planner method. For now this
-  runs the baseline planner with the existing explanation advisor hook.
-- ``lookahead``: reserved for Leonardo's upgraded look-ahead planner.
-- ``compare_all``: reserved for evaluation runs across all planner modes.
-  Until the missing modes land, it runs the baseline controller.
+- ``baseline`` runs the speed-scaled planner.
+- ``llm`` runs the baseline planner with the optional LLM advisor.
+- ``lookahead`` runs finite-horizon landing-order selection.
+- ``compare_all`` preserves the historical baseline-only behavior.
 """
 
 from .baseline import TrajectoryPlannerController
@@ -18,12 +14,21 @@ from .llm_advisor import TrajectoryLLMAdvisor
 SUPPORTED_TRAJECTORY_MODES = ("baseline", "llm", "lookahead", "compare_all")
 
 
-def build_trajectory_controller(mode, cargo_configs, planner_params, target, ini_x, num_moving_drones):
+def build_trajectory_controller(
+    mode,
+    cargo_configs,
+    planner_params,
+    target,
+    ini_x,
+    num_moving_drones,
+):
     """Build the controller selected by the trajectory-planner command mode."""
     mode = mode or "baseline"
     if mode not in SUPPORTED_TRAJECTORY_MODES:
         supported = ", ".join(SUPPORTED_TRAJECTORY_MODES)
-        raise ValueError(f"Unknown trajectory planner mode `{mode}`. Supported modes: {supported}")
+        raise ValueError(
+            f"Unknown trajectory planner mode `{mode}`. Supported modes: {supported}"
+        )
 
     controller_cls = TrajectoryPlannerController
     if mode == "lookahead":
@@ -32,7 +37,7 @@ def build_trajectory_controller(mode, cargo_configs, planner_params, target, ini
     if mode == "compare_all":
         print(
             "[TrajectoryPlanner] compare_all currently runs the baseline only; "
-            "llm and lookahead modes will be included when those planners are implemented."
+            "run the llm and lookahead modes separately for their respective results."
         )
 
     llm_advisor = None

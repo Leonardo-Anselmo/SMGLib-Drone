@@ -1,10 +1,10 @@
 """
-Phase 1 — Landing Pad Controller
+Landing Pad Controller
 
 Manages the single-pad bottleneck: mutual exclusion (one drone lands at a
 time), yielding logic, MPC warm-start reset, and landed-drone cleanup.
 
-Usage inside the simulation loop (test.py):
+Usage inside the simulation loop (simulation.py):
     controller = LandingPadController()
     ...
     controller.cleanup_landed(agent_list, target_reached, num_moving, K)
@@ -21,7 +21,7 @@ PAD_CENTER = np.array([0.0, 0.0])
 
 
 class LandingPadController:
-    """Phase 1 baseline: closest-drone-first greedy landing policy."""
+    """Closest-drone-first landing controller and shared MPC helpers."""
 
     # ------------------------------------------------------------------
     # Landed-drone cleanup
@@ -34,12 +34,10 @@ class LandingPadController:
                 agent_list[j].p = np.array([100.0, 100.0])
                 agent_list[j].v = np.zeros(2)
                 agent_list[j].state = np.append(agent_list[j].p, agent_list[j].v)
-                agent_list[j].pre_traj = np.tile(
-                    np.array([100.0, 100.0]), (K + 1, 1)
-                )
+                agent_list[j].pre_traj = np.tile(np.array([100.0, 100.0]), (K + 1, 1))
 
     # ------------------------------------------------------------------
-    # Negotiation hook (no-op in Phase 1/2; override for Phase 4)
+    # Negotiation hook (no-op in the base controller).
     # ------------------------------------------------------------------
     def negotiation_hook(self, agent_list, active_drones, step):
         """Called before ``select_active_drone``.
@@ -52,7 +50,7 @@ class LandingPadController:
         return None
 
     # ------------------------------------------------------------------
-    # Yielding decision  (Phase 1 — distance-based)
+    # Distance-based yielding decision.
     # ------------------------------------------------------------------
     def select_active_drone(self, agent_list, active_drones, step, verbose):
         """Pick the closest active drone; everyone else yields.
@@ -71,8 +69,12 @@ class LandingPadController:
         """
         if len(active_drones) <= 1:
             idx = active_drones[0] if active_drones else None
-            return {"allowed": idx, "yielding": set(),
-                    "method": "distance", "scores": {}}
+            return {
+                "allowed": idx,
+                "yielding": set(),
+                "method": "distance",
+                "scores": {},
+            }
 
         # Check negotiation hook first
         override = self.negotiation_hook(agent_list, active_drones, step)
@@ -80,8 +82,7 @@ class LandingPadController:
             return override
 
         distances = [
-            (j, np.linalg.norm(agent_list[j].p - PAD_CENTER))
-            for j in active_drones
+            (j, np.linalg.norm(agent_list[j].p - PAD_CENTER)) for j in active_drones
         ]
         distances.sort(key=lambda x: x[1])
         allowed_idx = distances[0][0]
@@ -95,8 +96,12 @@ class LandingPadController:
 
         yielding = {j for j in active_drones if j != allowed_idx}
         scores = {j: dist for j, dist in distances}
-        return {"allowed": allowed_idx, "yielding": yielding,
-                "method": "distance", "scores": scores}
+        return {
+            "allowed": allowed_idx,
+            "yielding": yielding,
+            "method": "distance",
+            "scores": scores,
+        }
 
     # ------------------------------------------------------------------
     # Freeze helpers
@@ -117,9 +122,7 @@ class LandingPadController:
     def reset_mpc(agent_list, released_indices, verbose):
         """Warm-start MPC reset for drones just released from holding."""
         for j in released_indices:
-            agent_list[j].pre_traj = np.tile(
-                agent_list[j].p, (agent_list[j].K + 1, 1)
-            )
+            agent_list[j].pre_traj = np.tile(agent_list[j].p, (agent_list[j].K + 1, 1))
             # Kill the tangential orbit velocity so the first MPC solve
             # doesn't have to flip direction (which looks like a backward
             # dart in the animation).
@@ -136,8 +139,9 @@ class LandingPadController:
     # Position bookkeeping for idle / landed drones
     # ------------------------------------------------------------------
     @staticmethod
-    def update_idle_positions(agent_list, process_indices, target_reached,
-                              target, num_moving_drones):
+    def update_idle_positions(
+        agent_list, process_indices, target_reached, target, num_moving_drones
+    ):
         """Append current position to history for drones that skipped MPC."""
         for j in range(num_moving_drones):
             if j not in process_indices:
@@ -151,14 +155,14 @@ class LandingPadController:
                     )
 
     # ------------------------------------------------------------------
-    # Per-step hook (no-op in Phase 1; overridden in Phase 2)
+    # Per-step hook for specialized controllers.
     # ------------------------------------------------------------------
     def step_update(self, agent_list, target_reached, num_moving_drones):
         """Called at the end of each simulation step. Override for extra logic."""
         pass
 
     # ------------------------------------------------------------------
-    # Termination check (overridden in Phase 6 for round-trip lifecycle)
+    # Termination check for one-way scenarios.
     # ------------------------------------------------------------------
     def all_finished(self, target_reached, num_moving_drones):
         """Return True when the simulation can terminate. By default, all

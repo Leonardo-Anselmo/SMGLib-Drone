@@ -34,43 +34,39 @@ from .yielders import Freeze, Orbit, Yielder
 
 SELECTORS: Dict[str, type] = {
     "closest_first": ClosestFirst,
-    "priority":      Priority,
+    "priority": Priority,
 }
 
 YIELDERS: Dict[str, type] = {
     "freeze": Freeze,
-    "orbit":  Orbit,
+    "orbit": Orbit,
 }
 
 LIFECYCLES: Dict[str, type] = {
-    "one_way":    OneWay,
+    "one_way": OneWay,
     "round_trip": RoundTrip,
 }
 
 NEGOTIATORS: Dict[str, type] = {
     "expiry_guard": ExpiryGuard,
-    "eta_switch":   EtaSwitch,
+    "eta_switch": EtaSwitch,
     "llm_negotiator": LLMNegotiator,
 }
 
 
 def _make_selector(name: str) -> Selector:
     if name not in SELECTORS:
-        raise ValueError(
-            f"Unknown selector '{name}'. Registered: {sorted(SELECTORS)}"
-        )
+        raise ValueError(f"Unknown selector '{name}'. Registered: {sorted(SELECTORS)}")
     return SELECTORS[name]()
 
 
 def _make_yielder(name: str, params: Dict[str, Any]) -> Yielder:
     if name not in YIELDERS:
-        raise ValueError(
-            f"Unknown yielder '{name}'. Registered: {sorted(YIELDERS)}"
-        )
+        raise ValueError(f"Unknown yielder '{name}'. Registered: {sorted(YIELDERS)}")
     if name == "orbit":
         return Orbit(
-            orbit_radius=params.get("orbit_radius",  0.7),
-            orbit_speed=params.get("orbit_speed",    0.15),
+            orbit_radius=params.get("orbit_radius", 0.7),
+            orbit_speed=params.get("orbit_speed", 0.15),
             safe_distance=params.get("safe_distance", 1.2),
         )
     return YIELDERS[name]()
@@ -146,15 +142,15 @@ def build_policy_yield_controller(
     target=None,
     policy_recipe: Optional[Dict[str, Any]] = None,
 ) -> PolicyYieldController:
-    """Single integration point used by ``test.py``.
+    """Single integration point used by ``simulation.py``.
 
     A scenario without a ``policy`` block falls back to the closest-first
     baseline (no priority, no orbit, no negotiation, no round-trip),
     which matches the legacy ``LandingPadController`` default.
     """
     recipe = policy_recipe or {
-        "selector":  "closest_first",
-        "yielder":   "freeze",
+        "selector": "closest_first",
+        "yielder": "freeze",
         "lifecycle": "one_way",
     }
     return build_from_recipe(recipe, target=target)
@@ -163,8 +159,8 @@ def build_policy_yield_controller(
 def list_registered() -> Dict[str, List[str]]:
     """Diagnostics helper: return the names every role currently exposes."""
     return {
-        "selectors":   sorted(SELECTORS),
-        "yielders":    sorted(YIELDERS),
-        "lifecycles":  sorted(LIFECYCLES),
+        "selectors": sorted(SELECTORS),
+        "yielders": sorted(YIELDERS),
+        "lifecycles": sorted(LIFECYCLES),
         "negotiators": sorted(NEGOTIATORS),
     }

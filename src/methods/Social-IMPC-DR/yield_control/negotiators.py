@@ -48,13 +48,15 @@ def _gather_info(candidates: List[int], ctx: Context, nominal_speed: float):
             distance_to_pad=dist,
             patient_acuity=a.patient_acuity,
         )
-        info.append({
-            "idx":   j,
-            "dist":  dist,
-            "eta":   eta,
-            "tte":   tte,
-            "score": s,
-        })
+        info.append(
+            {
+                "idx": j,
+                "dist": dist,
+                "eta": eta,
+                "tte": tte,
+                "score": s,
+            }
+        )
     return info
 
 
@@ -92,10 +94,10 @@ class ExpiryGuard(Negotiator):
                 f"(tte={winner['tte']:.1f} < eta={winner['eta']:.1f})"
             )
         return {
-            "allowed":  allowed_idx,
+            "allowed": allowed_idx,
             "yielding": yielding,
-            "method":   self.name,
-            "scores":   scores_map,
+            "method": self.name,
+            "scores": scores_map,
         }
 
 
@@ -141,20 +143,17 @@ class EtaSwitch(Negotiator):
                 f"eta={winner['eta']:.1f} steps)"
             )
         return {
-            "allowed":  allowed_idx,
+            "allowed": allowed_idx,
             "yielding": yielding,
-            "method":   self.name,
-            "scores":   scores_map,
+            "method": self.name,
+            "scores": scores_map,
         }
 
 
 class LLMNegotiator(Negotiator):
-    """Claude-driven negotiator adapted from Shariq's Phase 5 controller.
+    """Claude-driven negotiator exposed through the standard override API.
 
-    This preserves Shariq's internal method names while exposing the flat
-    policy-yield plugin entrypoint (`override`). Unlike the old
-    `LLMController(NegotiationController)`, failure returns None so the next
-    negotiator or selector can decide.
+    Failures return ``None`` so the next negotiator or selector can decide.
     """
 
     name = "llm_negotiator"
@@ -175,7 +174,7 @@ class LLMNegotiator(Negotiator):
 
         self._initial_configs = []
         self._cached_result = None
-        self._cached_step = -(10 ** 9)
+        self._cached_step = -(10**9)
         self._cached_active_set = None
         self.llm_decision_log = []
 
@@ -194,7 +193,7 @@ class LLMNegotiator(Negotiator):
         return self.negotiation_hook(ctx.agent_list, candidates, ctx.step)
 
     # ------------------------------------------------------------------
-    # Shariq-compatible method names
+    # LLM decision helpers
     # ------------------------------------------------------------------
     def negotiation_hook(self, agent_list, active_drones, step):
         """Ask Claude which drone should land next.
@@ -234,18 +233,20 @@ class LLMNegotiator(Negotiator):
         self._cached_step = step
         self._cached_active_set = active_set
 
-        self.llm_decision_log.append({
-            "step": step,
-            "allowed": result["allowed"],
-            "method": result["method"],
-            "reason": result.get("reason", ""),
-        })
+        self.llm_decision_log.append(
+            {
+                "step": step,
+                "allowed": result["allowed"],
+                "method": result["method"],
+                "reason": result.get("reason", ""),
+            }
+        )
         return result
 
     def _score_active(self, agent_list, active_drones):
         """Optionally score active drones with the LLM.
 
-        Kept from Shariq's structure for future scoring-mode scenarios.
+        Available for future scoring-mode scenarios.
         The current LLM negotiator config uses `negotiation_hook`.
         """
         if not self._use_llm_score:
@@ -323,11 +324,13 @@ class LLMNegotiator(Negotiator):
         if not self._api_key:
             raise RuntimeError("ANTHROPIC_API_KEY not set")
 
-        payload = json.dumps({
-            "model": self._llm_model,
-            "max_tokens": _MAX_TOKENS,
-            "messages": [{"role": "user", "content": prompt}],
-        }).encode("utf-8")
+        payload = json.dumps(
+            {
+                "model": self._llm_model,
+                "max_tokens": _MAX_TOKENS,
+                "messages": [{"role": "user", "content": prompt}],
+            }
+        ).encode("utf-8")
 
         req = urllib.request.Request(
             _API_URL,

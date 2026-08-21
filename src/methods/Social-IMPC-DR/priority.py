@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 
 # ── Load configuration from configs/priority_config.json ───────────────
-_CONFIG_PATH = Path(__file__).resolve().parent / 'configs' / 'priority_config.json'
+_CONFIG_PATH = Path(__file__).resolve().parent / "configs" / "priority_config.json"
 
 if not _CONFIG_PATH.exists():
     print(
@@ -33,27 +33,28 @@ if not _CONFIG_PATH.exists():
     )
     sys.exit(1)
 
-with open(_CONFIG_PATH, 'r') as _f:
+with open(_CONFIG_PATH, "r") as _f:
     _PRIORITY_CFG = json.load(_f)
 
 # ── Cargo-type categorical weights ──────────────────────────────────────
-CARGO_WEIGHTS = _PRIORITY_CFG['cargo_weights']
+CARGO_WEIGHTS = _PRIORITY_CFG["cargo_weights"]
 
 # ── Patient-acuity severity scores ──────────────────────────────────────
-ACUITY_SCORES = _PRIORITY_CFG['acuity_scores']
+ACUITY_SCORES = _PRIORITY_CFG["acuity_scores"]
 
 # ── Default factor weights (sum to 1.0) ────────────────────────────────
-DEFAULT_WEIGHTS = _PRIORITY_CFG['factor_weights']
+DEFAULT_WEIGHTS = _PRIORITY_CFG["factor_weights"]
 
 # Maximum expected distance used to normalise the distance component.
-_MAX_DISTANCE = _PRIORITY_CFG['max_distance']
+_MAX_DISTANCE = _PRIORITY_CFG["max_distance"]
 
 # Maximum expected expiry time (seconds / steps) used for normalisation.
-_MAX_EXPIRY = _PRIORITY_CFG['max_expiry']
+_MAX_EXPIRY = _PRIORITY_CFG["max_expiry"]
 
 
-def priority_score(cargo_type, time_to_expiry, distance_to_pad,
-                   patient_acuity, weights=None):
+def priority_score(
+    cargo_type, time_to_expiry, distance_to_pad, patient_acuity, weights=None
+):
     """Return a real-valued priority score in [0, 1].
 
     Higher score  →  higher priority  →  drone should proceed first.
@@ -95,10 +96,12 @@ def priority_score(cargo_type, time_to_expiry, distance_to_pad,
     # 4. Acuity component ── direct lookup
     acuity_val = ACUITY_SCORES.get(patient_acuity, 0.0)
 
-    score = (w['cargo']    * cargo_val
-           + w['expiry']   * expiry_val
-           + w['distance'] * distance_val
-           + w['acuity']   * acuity_val)
+    score = (
+        w["cargo"] * cargo_val
+        + w["expiry"] * expiry_val
+        + w["distance"] * distance_val
+        + w["acuity"] * acuity_val
+    )
 
     return float(np.clip(score, 0.0, 1.0))
 
@@ -122,12 +125,12 @@ def rank_drones(drone_infos, weights=None):
     scored = []
     for d in drone_infos:
         s = priority_score(
-            cargo_type=d['cargo_type'],
-            time_to_expiry=d['time_to_expiry'],
-            distance_to_pad=d['distance_to_pad'],
-            patient_acuity=d['patient_acuity'],
+            cargo_type=d["cargo_type"],
+            time_to_expiry=d["time_to_expiry"],
+            distance_to_pad=d["distance_to_pad"],
+            patient_acuity=d["patient_acuity"],
             weights=weights,
         )
-        scored.append((d['id'], s))
+        scored.append((d["id"], s))
     scored.sort(key=lambda x: x[1], reverse=True)
     return scored

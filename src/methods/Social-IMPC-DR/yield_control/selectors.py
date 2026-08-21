@@ -56,10 +56,10 @@ class ClosestFirst(Selector):
 
         yielding: Set[int] = {j for j in candidates if j != allowed_idx}
         return {
-            "allowed":  allowed_idx,
+            "allowed": allowed_idx,
             "yielding": yielding,
-            "method":   self.name,
-            "scores":   scores,
+            "method": self.name,
+            "scores": scores,
         }
 
     def score(self, candidates: List[int], ctx: Context) -> Dict[int, float]:
@@ -103,10 +103,10 @@ class Priority(Selector):
 
         yielding: Set[int] = {j for j in candidates if j != allowed_idx}
         return {
-            "allowed":  allowed_idx,
+            "allowed": allowed_idx,
             "yielding": yielding,
-            "method":   self.name,
-            "scores":   scores,
+            "method": self.name,
+            "scores": scores,
         }
 
     def score(self, candidates: List[int], ctx: Context) -> Dict[int, float]:

@@ -1,9 +1,4 @@
-"""Trajectory planner track registry.
-
-The final submission exposes several planner modes through the command
-line. The baseline controller provides the default speed-scaled planner,
-while the lookahead controller adds finite-horizon landing-order selection.
-"""
+"""Trajectory-planner controllers and their command-line registry."""
 
 from .baseline import TrajectoryPlannerController
 from .lookahead import LookaheadTrajectoryPlannerController

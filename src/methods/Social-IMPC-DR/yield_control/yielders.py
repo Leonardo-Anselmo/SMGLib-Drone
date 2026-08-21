@@ -63,25 +63,20 @@ class Orbit(Yielder):
 
     def apply(self, yielding: Iterable[int], ctx: Context) -> None:
         active_p = None
-        if (
-            ctx.active_idx is not None
-            and ctx.active_idx < len(ctx.agent_list)
-        ):
+        if ctx.active_idx is not None and ctx.active_idx < len(ctx.agent_list):
             active_p = ctx.agent_list[ctx.active_idx].p
 
         for j in yielding:
             needs_init = j not in self._state
             if not needs_init:
-                drift = np.linalg.norm(
-                    ctx.agent_list[j].p - self._state[j]["center"]
-                )
+                drift = np.linalg.norm(ctx.agent_list[j].p - self._state[j]["center"])
                 if drift > 1.5 * self.orbit_radius:
                     needs_init = True
 
             if needs_init:
                 self._state[j] = {
                     "center": ctx.agent_list[j].p.copy(),
-                    "angle":  0.0,
+                    "angle": 0.0,
                 }
 
             state = self._state[j]
@@ -94,7 +89,8 @@ class Orbit(Yielder):
                 if dist_center < min_center_dist:
                     push_dir = (
                         vec / dist_center
-                        if dist_center > 1e-6 else np.array([1.0, 0.0])
+                        if dist_center > 1e-6
+                        else np.array([1.0, 0.0])
                     )
                     state["center"] = active_p + push_dir * min_center_dist
 
@@ -105,8 +101,8 @@ class Orbit(Yielder):
             new_p = c + r * np.array([np.cos(a), np.sin(a)])
             new_v = self.orbit_speed * r * np.array([-np.sin(a), np.cos(a)])
 
-            ctx.agent_list[j].p     = new_p
-            ctx.agent_list[j].v     = new_v
+            ctx.agent_list[j].p = new_p
+            ctx.agent_list[j].v = new_v
             ctx.agent_list[j].state = np.append(new_p, new_v)
 
             K = ctx.agent_list[j].K

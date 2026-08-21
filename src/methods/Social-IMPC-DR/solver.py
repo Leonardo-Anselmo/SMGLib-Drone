@@ -1,0 +1,141 @@
+import cvxpy as cp
+import numpy as np
+
+import settings as SET
+from collision_avoidance import GET_cons
+
+
+def run_one_step(agent_list, obstacle_list, verbose=True):
+    num_agents_to_process = len(agent_list)
+    items = []
+    for i in range(num_agents_to_process):
+        items.append([agent_list[i], obstacle_list, verbose])
+
+    agent_list = [run_one_agent(items[i]) for i in range(num_agents_to_process)]
+    return agent_list
+
+
+def run_one_agent(items):
+    agent = items[0]
+    obstacle_list = items[1]
+    verbose = items[2] if len(items) > 2 else True
+
+    agent.change_target(SET.target[agent.index])
+
+    # get avoidance constraints with wall collision multiplier
+    # Use a default value of 2.0 if not specified in SET
+    wall_collision_multiplier = getattr(SET, "wall_collision_multiplier", 2.0)
+    env_type = getattr(SET, "env_type", None)
+    agent.cons_A, agent.cons_b, agent.cons_C, agent.rho = GET_cons(
+        agent,
+        obstacle_list,
+        wall_collision_multiplier,
+        env_type=env_type,
+    )
+
+    # running convex program
+    agent.cache = run_cvxp(agent, verbose)
+
+    # get new cost_index
+    agent.post_processing()
+
+    return agent
+
+
+def run_cvxp(agent, verbose=True):
+
+    state = agent.state
+    cons_A = agent.cons_A
+    cons_b = agent.cons_b
+    cons_C = agent.cons_C
+    rho = agent.rho
+    u_last = agent.u
+    Delta = agent.Delta
+    Delta_P = 10.0 * agent.Delta_P
+    K = agent.K
+    D = agent.D
+    VA = agent.VA
+    VB = agent.VB
+    VC = agent.VC
+    Phi = agent.Phi
+    Theta_u = agent.Theta_u
+    Theta_v = agent.Theta_v
+    Xi = agent.Xi  # for replicating simulation
+    # Zero out control for wall/obstacle agents (index >= num_moving_drones)
+    wall_start = getattr(SET, "num_moving_drones", 2)
+    if wall_start <= agent.index <= 21:
+        agent.Umax = 0
+        Umax = 0
+    else:
+        Umax = agent.Umax
+    Umax = agent.Umax
+    if wall_start <= agent.index <= 21:
+        agent.Vmax = 0
+        Vmax = 0
+    else:
+        Vmax = agent.Vmax
+    epsilon = agent.epsilon
+    Xi_K = agent.Xi_K
+    G_p = agent.G_p
+    cost_index = agent.cost_index
+
+    # get the needed weight coefficient matrix
+    Sigma = np.zeros([D * K, D * K])
+
+    for i in range(max([cost_index - 1, 0]), K):
+        for j in range(D):
+            Sigma[D * i + j][D * i + j] = 15
+
+    Q = VB.T @ Phi.T @ Sigma @ Phi @ VB + VB.T @ Phi.T @ Delta_P @ Phi @ VB
+    p = 2 * VB.T @ Phi.T @ Sigma @ (
+        Phi @ (VA @ state + VC) - G_p
+    ) + 2 * VB.T @ Phi.T @ Delta_P @ Phi @ (VA @ state + VC)
+
+    if verbose:
+        print(state)
+    # print(Theta_v)
+
+    # define the variables
+    U = cp.Variable(D * K)
+    E = cp.Variable(cons_C.shape[1])
+
+    # objective function
+    objective = cp.Minimize(
+        cp.quad_form(U, Q) + p.T @ U + rho @ (E / epsilon - cp.log(E))
+    )
+
+    # control input constraint
+    constraints = [Theta_u @ U**2 <= Umax**2]
+
+    # velocity constraint
+    constraints += [Theta_v @ (Xi @ (VA @ state + VB @ U + VC)) ** 2 <= Vmax**2]
+
+    # avoidance constraints
+    constraints += [cons_b + cons_C @ E <= cons_A @ Phi @ (VA @ state + VB @ U + VC)]
+    constraints += [E >= 0]
+    constraints += [epsilon >= E]
+
+    # terminal constraint
+    constraints += [Xi_K @ (VA @ state + VB @ U + VC) == np.zeros(D)]
+
+    # formulate the problem
+    prob = cp.Problem(objective, constraints)
+
+    prob.solve(solver="SCS")
+
+    # Check if optimization was successful
+    if U.value is None or np.isscalar(U.value):
+        print(
+            f"Warning: Optimization failed for agent {agent.index}, using zero control"
+        )
+        U_value = np.zeros(D * K)
+        E_value = np.ones(cons_C.shape[1]) * epsilon
+    else:
+        U_value = U.value
+        E_value = E.value if E.value is not None else np.ones(cons_C.shape[1]) * epsilon
+
+    return [
+        VA @ state + VB @ U_value + VC,
+        U_value.reshape((K, D)),
+        E_value[1 : cons_C.shape[1]],
+    ]

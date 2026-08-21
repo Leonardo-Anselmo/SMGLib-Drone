@@ -10,14 +10,15 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 import run_simulation
 
+
 def run_cadrl_simulation(num_robots: int, env_type: str):
     """
     Run Social-CADRL simulation.
-    
+
     Args:
         num_robots: Number of robots to simulate
         env_type: Environment type ('hallway', 'doorway', 'intersection')
-    
+
     Returns:
         dict: Simulation results including makespan, flow_rate, completion_data
     """
@@ -26,4 +27,4 @@ def run_cadrl_simulation(num_robots: int, env_type: str):
         return run_simulation.run_social_cadrl(num_robots, env_type)
     except Exception as e:
         print(f"CADRL simulation error: {e}")
-        return None 
+        return None

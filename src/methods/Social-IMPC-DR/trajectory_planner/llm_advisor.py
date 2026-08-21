@@ -1,9 +1,8 @@
 """
 Track 2 LLM advisor for the trajectory planner.
 
-This module adapts the reusable parts of Shariq's Phase 5 LLM work
-(API call, prompt construction, parsing, caching, and summary logging)
-without importing the old yield/orbit/negotiation controller chain.
+It provides API access, prompt construction, parsing, caching, and summary
+logging without coupling the planner to the yield-control implementation.
 
 The advisor is intentionally not a controller. It is a helper used by
 TrajectoryPlannerController after the planner computes its normal schedule.
@@ -33,7 +32,7 @@ class TrajectoryLLMAdvisor:
         self.cache_steps = max(1, int(cache_steps))
         self._api_key = os.environ.get("ANTHROPIC_API_KEY", "")
         self._cached_key = None
-        self._cached_step = -(10 ** 9)
+        self._cached_step = -(10**9)
         self._cached_text = None
         self.explanation_log = []
         self.score_adjust_log = []
@@ -87,8 +86,10 @@ class TrajectoryLLMAdvisor:
             return None
 
         prompt = self._build_score_prompt(agent_list, info, step)
-        cache_key = ("score_adjust", tuple((d["idx"], round(d["score"], 4))
-                                           for d in info))
+        cache_key = (
+            "score_adjust",
+            tuple((d["idx"], round(d["score"], 4)) for d in info),
+        )
         text = self._call_with_cache(prompt, cache_key, step)
         if text is None:
             return None
@@ -99,11 +100,13 @@ class TrajectoryLLMAdvisor:
             print(f"  [LLM Advisor] score parse failed: {exc}")
             return None
 
-        self.score_adjust_log.append({
-            "step": step,
-            "scores": dict(adjusted),
-            "raw": text,
-        })
+        self.score_adjust_log.append(
+            {
+                "step": step,
+                "scores": dict(adjusted),
+                "raw": text,
+            }
+        )
         return adjusted
 
     # ------------------------------------------------------------------
@@ -205,11 +208,13 @@ class TrajectoryLLMAdvisor:
         return text
 
     def _call_llm(self, prompt):
-        payload = json.dumps({
-            "model": self.model,
-            "max_tokens": _MAX_TOKENS,
-            "messages": [{"role": "user", "content": prompt}],
-        }).encode("utf-8")
+        payload = json.dumps(
+            {
+                "model": self.model,
+                "max_tokens": _MAX_TOKENS,
+                "messages": [{"role": "user", "content": prompt}],
+            }
+        ).encode("utf-8")
 
         req = urllib.request.Request(
             _API_URL,
